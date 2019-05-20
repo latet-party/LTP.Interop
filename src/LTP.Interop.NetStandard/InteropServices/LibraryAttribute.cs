@@ -25,7 +25,7 @@ namespace LTP.Interop.InteropServices
 		#region Constructors
 		public LibraryAttribute( string name )
 		{
-			Name = name;
+			this.Name = name;
 		}
 		#endregion
 
