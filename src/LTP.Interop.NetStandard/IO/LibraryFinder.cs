@@ -73,7 +73,7 @@ namespace LTP.Interop.IO
 
 		#region Methods
 		[MethodImpl( MethodImplOptions.AggressiveInlining )]
-		private static LibraryArchitecture _stringToArchitecture( string architectureString )
+		private static LibraryArchitecture StringToArchitecture( string architectureString )
 		{
 			for( byte i = 0; i < _architectureKeywords.Length; i++ )
 			{
@@ -88,7 +88,7 @@ namespace LTP.Interop.IO
 		}
 
 		[MethodImpl( MethodImplOptions.AggressiveInlining )]
-		private static LibraryInformation[] _filterPaths( string name, string[] paths )
+		private static LibraryInformation[] FilterPaths( string name, string[] paths )
 		{
 			Regex regex = new Regex( string.Format( REGEX_TEMPLATE, name ) );
 			List<LibraryInformation> buffer = new List<LibraryInformation>();
@@ -120,7 +120,7 @@ namespace LTP.Interop.IO
 						architecture = LibraryArchitecture.amd64;
 				}
 				else
-					architecture = _stringToArchitecture( architectureString );
+					architecture = StringToArchitecture( architectureString );
 
 				for( int i = 0; i < version.Length; i++ )
 					short.TryParse( versionSplit[ i ], out version[ i ] );
@@ -141,7 +141,7 @@ namespace LTP.Interop.IO
 		}
 
 		[MethodImpl( MethodImplOptions.AggressiveInlining )]
-		private static bool _isNewer( short[] lhs, short[] rhs )
+		private static bool IsNewer( short[] lhs, short[] rhs )
 		{
 			int len = Math.Min( lhs.Length, rhs.Length );
 
@@ -160,13 +160,13 @@ namespace LTP.Interop.IO
 		}
 
 		[MethodImpl( MethodImplOptions.AggressiveInlining )]
-		private static LibraryInformation _filterByVersionAndArchitecture( params LibraryInformation[] libraries )
+		private static LibraryInformation FilterByVersionAndArchitecture( params LibraryInformation[] libraries )
 		{
 			LibraryArchitecture targetArchictecture = Environment.Is64BitProcess ? LibraryArchitecture.amd64 : LibraryArchitecture.i386;
 			LibraryInformation result = libraries[ 0 ];
 
 			foreach( LibraryInformation library in libraries )
-				if( _isNewer( result.Version, library.Version ) && library.Architecture == targetArchictecture )
+				if( IsNewer( result.Version, library.Version ) && library.Architecture == targetArchictecture )
 					result = library;
 
 			return result;
@@ -180,14 +180,14 @@ namespace LTP.Interop.IO
 			if( ( searchOptions & LibrarySearchOptions.IncludeTopDirectory ) != 0 )
 			{
 				string[] paths = Directory.GetFiles( Directory.GetCurrentDirectory(), "*" + name + "*", directorySearchOption );
-				LibraryInformation[] libraries = _filterPaths( name, paths );
+				LibraryInformation[] libraries = FilterPaths( name, paths );
 
 				foreach( LibraryInformation library in libraries )
 					Debug.Log( "Found '" + Path.GetFileName( library.Path ) + "'" );
 
 				if( libraries.Length > 0 )
 				{
-					LibraryInformation newest = _filterByVersionAndArchitecture( libraries );
+					LibraryInformation newest = FilterByVersionAndArchitecture( libraries );
 
 
 					return newest.Path;
@@ -199,14 +199,14 @@ namespace LTP.Interop.IO
 			if( ( searchOptions & LibrarySearchOptions.IncludeSystemDirectory ) != 0 )
 			{
 				string[] paths = Directory.GetFiles( Directory.GetCurrentDirectory(), "*" + name + "*", SearchOption.TopDirectoryOnly );
-				LibraryInformation[] libraries = _filterPaths( name, paths );
+				LibraryInformation[] libraries = FilterPaths( name, paths );
 
 				foreach( LibraryInformation library in libraries )
 					Debug.Log( "Found '" + Path.GetFileName( library.Path ) + "'" );
 
 				if( libraries.Length > 0 )
 				{
-					LibraryInformation newest = _filterByVersionAndArchitecture( libraries );
+					LibraryInformation newest = FilterByVersionAndArchitecture( libraries );
 
 
 					return newest.Path;
@@ -235,14 +235,14 @@ namespace LTP.Interop.IO
 						}
 
 						string[] paths = Directory.GetFiles( pathPath, "*" + name + "*", SearchOption.TopDirectoryOnly );
-						LibraryInformation[] libraries = _filterPaths( name, paths );
+						LibraryInformation[] libraries = FilterPaths( name, paths );
 
 						foreach( LibraryInformation library in libraries )
 							Debug.Log( "Found '" + Path.GetFileName( library.Path ) + "'" );
 
 						if( libraries.Length > 0 )
 						{
-							LibraryInformation newest = _filterByVersionAndArchitecture( libraries );
+							LibraryInformation newest = FilterByVersionAndArchitecture( libraries );
 
 
 							return newest.Path;
@@ -262,14 +262,14 @@ namespace LTP.Interop.IO
 			{
 
 				string[] paths = Directory.GetFiles( customRoot, "*" + name + "*", directorySearchOption );
-				LibraryInformation[] libraries = _filterPaths( name, paths );
+				LibraryInformation[] libraries = FilterPaths( name, paths );
 
 				foreach( LibraryInformation library in libraries )
 					Debug.Log( "Found '" + Path.GetFileName( library.Path ) + "'" );
 
 				if( libraries.Length > 0 )
 				{
-					LibraryInformation newest = _filterByVersionAndArchitecture( libraries );
+					LibraryInformation newest = FilterByVersionAndArchitecture( libraries );
 
 
 					return newest.Path;

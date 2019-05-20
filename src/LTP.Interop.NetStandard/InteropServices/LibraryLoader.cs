@@ -18,17 +18,17 @@ namespace LTP.Interop.InteropServices
 	public static class LibraryLoader
 	{
 		#region DllImport
-		[DllImport( "kernel32" )]
+		[DllImport( "kernel32", EntryPoint = "LoadLibrary" )]
 		private static extern IntPtr LoadLibrary( [In] [MarshalAs( UnmanagedType.LPStr )] string lpFileName );
 
-		[DllImport( "kernel32" )]
+		[DllImport( "kernel32", EntryPoint = "GetProcAddress" )]
 		private static extern IntPtr GetProcAddress( IntPtr hModule, [In] [MarshalAs( UnmanagedType.LPStr )] string lpProcName );
 
-		[DllImport( "libdl" )]
-		private static extern IntPtr dlopen( [In] [MarshalAs( UnmanagedType.LPStr )] string filename, int flags );
+		[DllImport( "libdl", EntryPoint = "dlopen" )]
+		private static extern IntPtr DlOpen( [In] [MarshalAs( UnmanagedType.LPStr )] string filename, int flags );
 
-		[DllImport( "libdl" )]
-		private static extern IntPtr dlsym( IntPtr handle, [In] [MarshalAs( UnmanagedType.LPStr )] string symbol );
+		[DllImport( "libdl", EntryPoint = "dlsym" )]
+		private static extern IntPtr DlSym( IntPtr handle, [In] [MarshalAs( UnmanagedType.LPStr )] string symbol );
 
 		#region dlopen flags
 		private const int RTLD_NOW = 2;
@@ -55,8 +55,8 @@ namespace LTP.Interop.InteropServices
 			}
 			else if( PlatformInformation.Platform == OSPlatform.Linux || PlatformInformation.Platform == OSPlatform.OSX )
 			{
-				Open += dlopen;
-				Symbol += dlsym;
+				Open += DlOpen;
+				Symbol += DlSym;
 			}
 		}
 		#endregion
