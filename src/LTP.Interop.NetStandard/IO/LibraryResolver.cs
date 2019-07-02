@@ -43,11 +43,13 @@ namespace LTP.Interop.IO
 
 		#region Fields / Properties
 		private static string[][] _architectureKeywords;
+		private static ILibraryResolver _osSpecificResolver;
 		#endregion
 
 		#region Constructors
 		static LibraryFinder()
 		{
+			// _architectureKeywords
 			_architectureKeywords = new string[][]
 			{
 				new string[] // i386
@@ -68,6 +70,16 @@ namespace LTP.Interop.IO
 					"arm64"
 				}
 			};
+
+			// _osSpecificResolver
+			OSPlatform platform = PlatformInformation.Platform;
+
+			if( platform == OSPlatform.Windows )
+				_osSpecificResolver = new WindowsLibraryResolver();
+			else if( platform == OSPlatform.Linux )
+				_osSpecificResolver = new LinuxLibraryResolver();
+			else if( platform == OSPlatform.OSX )
+				_osSpecificResolver = new OSXLibraryResolver();
 		}
 		#endregion
 
@@ -91,13 +103,15 @@ namespace LTP.Interop.IO
 		private static LibraryInformation[] FilterPaths( string name, string[] paths )
 		{
 			Regex regex = new Regex( string.Format( REGEX_TEMPLATE, name ) );
-			List<LibraryInformation> buffer = new List<LibraryInformation>();
+			Stack<LibraryInformation> buffer = new Stack<LibraryInformation>();
 
 			foreach( string path in paths )
 			{
 				Match match = regex.Match( path );
-				if( !match.Success ) continue;
-				if( Path.GetFileName( path ) != match.Value ) continue;
+				if( !match.Success )
+					continue;
+				if( Path.GetFileName( path ) != match.Value )
+					continue;
 
 				bool prefixed = match.Groups[ 1 ].Length > 0;
 
@@ -126,7 +140,7 @@ namespace LTP.Interop.IO
 					short.TryParse( versionSplit[ i ], out version[ i ] );
 
 				// Add to buffer
-				buffer.Add( new LibraryInformation()
+				buffer.Push( new LibraryInformation()
 				{
 					Prefixed = prefixed,
 					Name = nameString,
@@ -172,90 +186,9 @@ namespace LTP.Interop.IO
 			return result;
 		}
 
-		public static string Locate( string name, LibrarySearchOptions searchOptions = LibrarySearchOptions.Default, string customRoot = "" )
+		public static string Resolve( string name, LibrarySearchOptions searchOptions = LibrarySearchOptions.Default, string customRoot = "" )
 		{
 			SearchOption directorySearchOption = ( searchOptions & LibrarySearchOptions.IncludeSubDirectories ) != 0 ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-
-			#region Working directory
-			if( ( searchOptions & LibrarySearchOptions.IncludeTopDirectory ) != 0 )
-			{
-				string[] paths = Directory.GetFiles( Directory.GetCurrentDirectory(), "*" + name + "*", directorySearchOption );
-				LibraryInformation[] libraries = FilterPaths( name, paths );
-
-				foreach( LibraryInformation library in libraries )
-					Debug.Log( "Found '" + Path.GetFileName( library.Path ) + "'" );
-
-				if( libraries.Length > 0 )
-				{
-					LibraryInformation newest = FilterByVersionAndArchitecture( libraries );
-
-
-					return newest.Path;
-				}
-			}
-			#endregion
-
-			#region System directory
-			if( ( searchOptions & LibrarySearchOptions.IncludeSystemDirectory ) != 0 )
-			{
-				string[] paths = Directory.GetFiles( Directory.GetCurrentDirectory(), "*" + name + "*", SearchOption.TopDirectoryOnly );
-				LibraryInformation[] libraries = FilterPaths( name, paths );
-
-				foreach( LibraryInformation library in libraries )
-					Debug.Log( "Found '" + Path.GetFileName( library.Path ) + "'" );
-
-				if( libraries.Length > 0 )
-				{
-					LibraryInformation newest = FilterByVersionAndArchitecture( libraries );
-
-
-					return newest.Path;
-				}
-			}
-			#endregion
-
-			#region PATH directories
-			if( ( searchOptions & LibrarySearchOptions.IncludePathDirectories ) != 0 )
-			{
-				char pathDelimiter = ';';
-
-				if( PlatformInformation.Platform == OSPlatform.Linux || PlatformInformation.Platform == OSPlatform.OSX )
-					pathDelimiter = ':';
-
-				string[] pathPaths = Environment.GetEnvironmentVariable( "PATH" ).Split( pathDelimiter );
-
-				foreach( string pathPath in pathPaths )
-				{
-					try
-					{
-						if( !Directory.Exists( pathPath ) )
-						{
-
-							continue;
-						}
-
-						string[] paths = Directory.GetFiles( pathPath, "*" + name + "*", SearchOption.TopDirectoryOnly );
-						LibraryInformation[] libraries = FilterPaths( name, paths );
-
-						foreach( LibraryInformation library in libraries )
-							Debug.Log( "Found '" + Path.GetFileName( library.Path ) + "'" );
-
-						if( libraries.Length > 0 )
-						{
-							LibraryInformation newest = FilterByVersionAndArchitecture( libraries );
-
-
-							return newest.Path;
-						}
-					}
-					catch( UnauthorizedAccessException )
-					{
-
-					}
-				}
-
-			}
-			#endregion
 
 			#region Custom root directory
 			if( ( searchOptions & LibrarySearchOptions.IncludeCustomRootDirectory ) != 0 )
@@ -264,22 +197,55 @@ namespace LTP.Interop.IO
 				string[] paths = Directory.GetFiles( customRoot, "*" + name + "*", directorySearchOption );
 				LibraryInformation[] libraries = FilterPaths( name, paths );
 
-				foreach( LibraryInformation library in libraries )
-					Debug.Log( "Found '" + Path.GetFileName( library.Path ) + "'" );
-
 				if( libraries.Length > 0 )
 				{
+					foreach( LibraryInformation library in libraries )
+						Debug.Log( "Found '" + Path.GetFileName( library.Path ) + "'" );
+
 					LibraryInformation newest = FilterByVersionAndArchitecture( libraries );
-
-
 					return newest.Path;
 				}
 
 			}
 			#endregion
 
+			#region Working directory
+			if( ( searchOptions & LibrarySearchOptions.IncludeTopDirectory ) != 0 )
+			{
+				string[] paths = Directory.GetFiles( Directory.GetCurrentDirectory(), "*" + name + "*", directorySearchOption );
+				LibraryInformation[] libraries = FilterPaths( name, paths );
+
+				if( libraries.Length > 0 )
+				{
+					foreach( LibraryInformation library in libraries )
+						Debug.Log( "Found '" + Path.GetFileName( library.Path ) + "'" );
+
+					LibraryInformation newest = FilterByVersionAndArchitecture( libraries );
+					return newest.Path;
+				}
+			}
+			#endregion
+
+			#region OS specific
+			string[][] staggeredPaths = _osSpecificResolver.Resolve( name, searchOptions );
+
+			foreach( string[] paths in staggeredPaths )
+			{
+				LibraryInformation[] libraries = FilterPaths( name, paths );
+
+				if( libraries.Length > 0 )
+				{
+					foreach( LibraryInformation library in libraries )
+						Debug.Log( "Found '" + Path.GetFileName( library.Path ) + "'" );
+
+					LibraryInformation newest = FilterByVersionAndArchitecture( libraries );
+					return newest.Path;
+				}
+			}
+			#endregion
+
 			// If all else fails
-			return string.Empty;
+			return name;
 		}
 		#endregion
 	}

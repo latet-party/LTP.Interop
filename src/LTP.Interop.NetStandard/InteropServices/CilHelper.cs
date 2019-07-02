@@ -44,7 +44,7 @@ namespace LTP.Interop.InteropServices
 
 			gen.Emit( OpCodes.Ldc_I8, (long)ptr );
 			gen.Emit( OpCodes.Conv_I );
-			gen.EmitCalli( OpCodes.Calli, CallingConvention.StdCall, method.ReturnType, paramTypes );
+			gen.EmitCalli( OpCodes.Calli, CallingConvention.Cdecl, method.ReturnType, paramTypes );
 			gen.Emit( OpCodes.Ret );
 
 			return dyn.CreateDelegate( ofType );
@@ -57,18 +57,19 @@ namespace LTP.Interop.InteropServices
 		{
 			FieldInfo[] fields = ofType.GetFields( BindingFlags.Public | BindingFlags.Static );
 
-			foreach ( FieldInfo fi in fields )
+			foreach( FieldInfo fi in fields )
 			{
-				if ( fi.FieldType.BaseType == _typeOfDelegate )
+				if( fi.FieldType.BaseType == _typeOfDelegate )
 				{
 					object[] attributes = fi.GetCustomAttributes( typeof( ExternalMethodAttribute ), false );
-					if ( attributes.Length == 0 ) continue;
+					if( attributes.Length == 0 )
+						continue;
 
 					ExternalMethodAttribute extmAttribute = (ExternalMethodAttribute)attributes[ 0 ];
 
 					IntPtr ptr = LibraryLoader.Symbol( libraryPtr, extmAttribute.EntryPoint ?? fi.Name );
 
-					if ( ptr != IntPtr.Zero )
+					if( ptr != IntPtr.Zero )
 						fi.SetValue( null, GetDelegateForFunctionPointer( ptr, fi.FieldType ) );
 					else
 						Console.Error.WriteLine( $"Unable to find entrypoint '{fi.Name}' for '{ofType.Name}'." );

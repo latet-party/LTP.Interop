@@ -68,18 +68,19 @@ namespace LTP.Interop.InteropServices
 		public static IntPtr Load( Type ofType, bool rtldGlobal = true )
 		{
 			object[] attributes = ofType.GetCustomAttributes( typeof( LibraryAttribute ), false );
-			if( attributes.Length == 0 ) throw new ArgumentNullException( "Type '" + ofType.Name + "' is missing LibraryAttribute." );
+			if( attributes.Length == 0 )
+				throw new ArgumentNullException( "Type '" + ofType.Name + "' is missing LibraryAttribute." );
 
 			#region Find library
 			LibraryAttribute libAttribute = (LibraryAttribute)attributes[ 0 ];
-			string filename = LibraryFinder.Locate( libAttribute.Name, libAttribute.SearchOptions, libAttribute.CustomRoot );
+			string filename = LibraryFinder.Resolve( libAttribute.Name, libAttribute.SearchOptions, libAttribute.CustomRoot );
 			#endregion
 
 			#region Open library
 			IntPtr libraryPtr = IntPtr.Zero;
 
 			if( !File.Exists( filename ) )
-				throw new FileNotFoundException( filename );
+				throw new DllNotFoundException( filename );
 
 			libraryPtr = Open( filename, rtldGlobal ? RTLD_NOW : RTLD_GLOBAL | RTLD_NOW );
 
